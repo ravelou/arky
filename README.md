@@ -1,6 +1,6 @@
 # `Arky`
 
-This package aims to provide python developpers a usefull interface with [ARK](https://ark.io/) platform.
+This package aims to provide python developpers a usefull interface to [ARK](https://ark.io/) platform.
 
 ## `arky` API
 

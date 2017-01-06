@@ -64,16 +64,19 @@ class Account:
 		return get('/api/accounts/delegates', address=address)
 
 	def vote(self, secret, *delegates, secondSecret=None, publicKey=None):
-		param = {"secret"=secret, "delegates"=delegates}
+		param = {"secret":secret, "delegates":delegates}
 		if secondSecret: param["secondSecret"] = secondSecret
 		if publicKey: param["publicKey"] = publicKey
 		return put('/api/accounts/delegates', **param)
+
+	def addSecondSignature(secret, secondSecret):
+		return put('/api/signatures', secret=secret, secondSecret=secondSecret)
 
 
 class Delegate:
 
 	def enableDelegateOnAccount(self, secret, username, secondSecret=None):
-		param = {"secret"=secret, "username"=username}
+		param = {"secret":secret, "username":username}
 		if secondSecret: param["secondSecret"] = secondSecret
 		return put('/api/delegates', **param)
 
@@ -92,3 +95,57 @@ class Delegate:
 	def disableForging(self, secret):
 		return post('/api/delegates/forging/disable', secret=secret)
 
+
+class Transaction:
+
+	def getTransactionsList(self):
+		return get('/api/transactions', publicKey=publicKey)
+
+	def sendTransaction(self, secret, amount, recipientId, publicKey=None, secondSecret=None):
+		param = {"secret":secret, "amount":amount, "recipientId":recipientId}
+		if secondSecret: param["secondSecret"] = secondSecret
+		if publicKey: param["publicKey"] = publicKey
+		return put('/api/transactions', **param)
+
+	def getTransaction(self, transactionId):
+		return get('/api/transactions/get', id=transactionId)
+
+	def getUnconfirmedTransaction(self, transactionId):
+		return get('/api/transactions/unconfirmed/get', id=transactionId)
+
+	def getUnconfirmedTransactions(self):
+		return get('/api/transactions/unconfirmed')
+
+
+class Peer:
+
+	def getPeersList(self):
+		return get('/api/peers')
+
+	def getPeers(self, ip, port):
+		return get('/api/peers', ip=ip, port=port)
+
+	def getPeerVersion(self):
+		return get('/api/peers/version')
+
+
+class Multisignature:
+
+	def getPendingMultiSignatureTransactions(self, publicKey):
+		return get('/api/multisignatures/pending', publicKey=publicKey)
+
+	def createMultiSignatureAccount(self, secret, lifetime, minimum, keysgroup):
+		return put('/api/multisignatures',
+			secret=secret,
+			lifetime=lifetime,
+			min=minimum,
+			keysgroup=keysgroup
+		)
+
+	def signTransaction(self, secret, transactionId, publicKey=None):
+		param = {"secret":secret, "transactionId":transactionId}
+		if publicKey: param["publicKey"] = publicKey
+		return post('/api/multisignatures/sign', **param)
+
+	def getAccountsOfMultisignature(self, publicKey):
+		return post('/api/multisignatures/accounts', publicKey=publicKey)

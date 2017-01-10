@@ -10,11 +10,11 @@ pack =       lambda fmt, fileobj, value: fileobj.write(struct.pack(fmt, *value))
 pack_bytes = lambda f,v: pack("!"+"%ss"%len(v), f, (v,)) if __PY3__ else \
              lambda f,v: pack("!"+"c"*len(v), f, v)
 
-# def getKeys(secret):
-# 	keys = ArkObject()
-# 	seed = hashlib.sha256(secret.encode() if not isinstance(secret, bytes) else secret).digest()
-# 	keys.public, keys.private = crypto_sign_seed_keypair(seed)
-# 	return keys
+def getKeys(secret):
+	keys = ArkObject()
+	seed = hashlib.sha256(secret.encode() if not isinstance(secret, bytes) else secret).digest()
+	keys.public, keys.private = crypto_sign_seed_keypair(seed)
+	return keys
 
 def getBytes(transaction):
 	buf = StringIO()
@@ -66,7 +66,7 @@ def getBytes(transaction):
 
 class Transaction(ArkObject):
 
-	# adress = property(lambda obj: base58.b58encode_check(obj.senderPublicKey) + "A", None, None, "")
+	adress = property(lambda obj: base58.b58encode_check(obj.senderPublicKey) + "A", None, None, "")
 
 	def __init__(self, **kwargs):
 		self.type = kwargs.get("type", 1)
@@ -108,16 +108,16 @@ class Transaction(ArkObject):
 	def doubleCheck(self):
 		pass
 
-	# def getHash(self):
-	# 	if not hasattr(self, "_hash"):
-	# 		ArkObject.__setattr__(self, "_hash", hashlib.sha256(self.getBytes()).digest())
-	# 	return getattr(self, "_hash")
+	def getHash(self):
+		if not hasattr(self, "_hash"):
+			ArkObject.__setattr__(self, "_hash", hashlib.sha256(self.getBytes()).digest())
+		return getattr(self, "_hash")
 
-	# def sign(self, private):
-	# 	ArkObject.__setattr__(self, "signature", crypto_sign(self.getHash(), private))
+	def sign(self, private):
+		ArkObject.__setattr__(self, "signature", crypto_sign(self.getHash(), private))
 
-	# def secondSign(self, private):
-	# 	ArkObject.__setattr__(self, "signSignature", crypto_sign(self.getHash(), private))
+	def secondSign(self, private):
+		ArkObject.__setattr__(self, "signSignature", crypto_sign(self.getHash(), private))
 
 # function sign(transaction, keys) {
 # 	var hash = getHash(transaction);

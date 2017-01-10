@@ -9,8 +9,8 @@ __URL_BASE__ = "http://node1.arknet.cloud:4000"
 def get(api, dic={}, **kw):
 	returnkey = kw.pop("returnKey", False)
 	data = json.loads(requests.get(__URL_BASE__+api, params=dict(dic, **kw)).text)
-	if data["success"] and returnkey: return data[returnkey]
-	else: return data
+	if data["success"] and returnkey: return ArkyDict(data[returnkey])
+	else: return ArkyDict(data)
 
 
 class Loader:

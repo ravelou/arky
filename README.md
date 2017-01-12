@@ -15,6 +15,7 @@ ey': None, 'multisignatures': []}, 'success': True}
 
 ## `arky.core`
 
+```python
 >>> import arky.core as core
 >>> keys = core.getKeys("your secret passphrase")
 >>> keys.public
@@ -32,5 +33,6 @@ ffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a12403220003abfad4a7644f406
 >>> keys.sign(hashlib.sha256("message".encode()).digest()).hex()
 '304402206e955336706dd2e45216db9321f5647a807dffe8040d259f93cb9917bed95ac502201fce153afaac89220a084da
 4a5d228e1e636997caab2b540b628755d4a5b0af2'
+```
 
 * TODO: private key WIF encode 

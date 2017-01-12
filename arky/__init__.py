@@ -1,5 +1,5 @@
 # -*- encoding: utf8 -*-
-import sys
+import sys, binascii
 
 __PY3__ = True if sys.version_info[0] >= 3 else False
 if __PY3__:
@@ -8,19 +8,13 @@ if __PY3__:
 else:
 	from StringIO import StringIO
 
-try:
-	from . import slots
-except:
-	pass
-
 
 class ArkObject(object):
-
 	def __getitem__(self, item):
 		if hasattr(self, item):
 			value = getattr(self, item)
 			if isinstance(value, bytes):
-				return value.hex()
+				return binascii.hexlify(value)
 		else:
 			raise AttributeError()
 
@@ -31,17 +25,19 @@ class ArkyDict(dict):
 	__delattr__ = lambda obj,*a,**k: dict.__delitem__(obj, *a, **k)
 
 
+# network options:
 ark = ArkyDict()
-ark.messagePrefix = "\x18Ark Signed Message:\n"
+ark.messagePrefix = b"\x18Ark Signed Message:\n"
 ark.bip32 = ArkyDict(public=0x0488b21e, private=0x0488ade4)
-ark.pubKeyHash = 0x17
-ark.wif = 0xaa
+ark.pubKeyHash = b"\x17"
+ark.wif = b"\xaa"
 
 testnet = ArkyDict()
-testnet.messagePrefix = "\x18Testnet Ark Signed Message:\n"
+testnet.messagePrefix = b"\x18Testnet Ark Signed Message:\n"
 testnet.bip32 = ArkyDict(public=0x043587cf, private=0x04358394)
-testnet.pubKeyHash = 0x6f
-testnet.wif = 0xef
+testnet.pubKeyHash = b"\x6f"
+testnet.wif = b"\xef"
+
 
 # ARK fees according to transactions in SATOSHI
 __FEES__ = ArkyDict({

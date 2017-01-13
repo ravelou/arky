@@ -1,13 +1,14 @@
 # -*- encoding: utf8 -*-
 
-import datetime
+import datetime, pytz
+UTC = pytz.UTC
 
-BEGIN_TIME = datetime.datetime(2016, 4, 24, 17, 0, 0, 0, tzinfo=datetime.timezone.utc)
+BEGIN_TIME = datetime.datetime(2016, 4, 24, 17, 0, 0, 0, tzinfo=UTC) #datetime.timezone.utc)
 INTERVAL = 10
 DELEGATES = 11
 
 def getTime(time=None):
-	delta = (datetime.datetime.now(datetime.timezone.utc) if not time else time) - BEGIN_TIME
+	delta = (datetime.datetime.now(UTC) if not time else time) - BEGIN_TIME
 	return delta.total_seconds() / 1000
 
 def getRealTime(epoch=None):

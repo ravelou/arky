@@ -81,7 +81,7 @@ class Delegate:
 		return get('/api/delegates/voters', publicKey=publicKey)
 
 
-class Transaction:
+class Transaction(object):
 
 	@staticmethod
 	def getTransactionsList():

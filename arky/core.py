@@ -1,7 +1,7 @@
 # -*- encoding: utf8 -*-
-from . import StringIO, __PY3__, __FEES__, slots, ArkObject, base58, api, ark, testnet
+from . import StringIO, __PY3__, __FEES__, slots, base58, api, ark, testnet, ArkyDict
 from .bitcoin.core import key
-import struct, hashlib
+import struct, hashlib, binascii
 
 # add properties to bitcoin.key.CECKey class
 # idea here is to generate public key and private key only on demand
@@ -15,18 +15,27 @@ pack =       lambda fmt, fileobj, value: fileobj.write(struct.pack(fmt, *value))
 pack_bytes = lambda f,v: pack("!"+"%ss"%len(v), f, (v,)) if __PY3__ else \
              lambda f,v: pack("!"+"c"*len(v), f, v)
 
-# generate bitcon keygen and store network nfo
+# generate bitcon keygen and store network info into it
+# if network is not provided, ark network is automatically selected
 def getKeys(secret, network=None):
-	seed = hashlib.sha256(secret.encode("utf8") if not isinstance(secret, bytes) else secret).digest()
 	keys = key.CECKey()
 	keys.network = ark if network == None else network
-	keys.set_compressed(keys.network.get("compressed", True))
+	keys.set_compressed(keys.network.get("compressed", True)) # compressed = True by default
+	seed = hashlib.sha256(secret.encode("utf8") if not isinstance(secret, bytes) else secret).digest()
 	keys.set_secretbytes(secret=seed)
 	return keys
 
+# return ARK address from keys defined by getKeys
 def getAddress(keys):
 	ripemd160 = hashlib.new('ripemd160', keys.public).digest()[:21]
 	seed = keys.network.pubKeyHash + ripemd160
+	return base58.b58encode_check(seed)
+
+# return WIF address from keys defined by getKeys
+def getWIF(keys):
+	compressed = keys.network.get("compressed", True)
+	seed = keys.network.wif + keys.public[:32] + (b"\x01" if compressed else b"")
+	print(len(seed))
 	return base58.b58encode_check(seed)
 
 def getBytes(transaction):
@@ -52,7 +61,7 @@ def getBytes(transaction):
 		vendorField = b"\x00"*64
 	pack_bytes(buf, vendorField)
 
-	pack("!l", buf, (transaction.amount,))
+	pack("!q", buf, (transaction.amount,))
 
 	typ  = transaction.type
 	if typ == 1 and "signature" in transaction.asset:
@@ -77,59 +86,44 @@ def getBytes(transaction):
 	return result.encode() if not isinstance(result, bytes) else result
 
 
-class Transaction(ArkObject, api.Transaction):
+class Transaction(api.Transaction):
+
+	id = property(lambda obj: int("0x"+hashlib.sha256(obj.getBytes()).hexdigest()[-8:][::-1], base=16), None, None, "")
+	hash = property(lambda obj: hashlib.sha256(getBytes(obj)).digest(), None, None, "")
 
 	def __init__(self, **kwargs):
 		self.type = kwargs.get("type", 0)
 		self.amount = kwargs.get("amount", 0)
 		self.timestamp = slots.getTime()
-		self.asset =  ArkObject()
+		self.asset = ArkyDict()
 
 	def __setattr__(self, attr, value):
-		if hasattr(self, "_bytes"): delattr(self, "_bytes")
-		if hasattr(self, "_hash"): delattr(self, "_hash")
-
 		if attr == "secret":
 			keys = getKeys(value)
-			ArkObject.__setattr__(self, "key_one", keys)
-			ArkObject.__setattr__(self, "address", getAddress(keys))
-			ArkObject.__setattr__(self, "senderPublicKey", keys.public)
+			object.__setattr__(self, "key_one", keys)
+			object.__setattr__(self, "address", getAddress(keys))
+			object.__setattr__(self, "senderPublicKey", keys.public)
 		if attr == "secondSecret":
-			keys = getKeys(value)
-			ArkObject.__setattr__(self, "key_two", keys)
+			object.__setattr__(self, "key_two", getKeys(value))
 		elif attr == "type":
 			if value == 1: self.fee = __FEES__.secondsignature
 			elif value == 2: self.fee = __FEES__.delegate
 			elif value == 3: self.fee = __FEES__.vote
 			elif value == 4: self.fee = __FEES__.multisignature
-			ArkObject.__setattr__(self, attr, value)
+			object.__setattr__(self, attr, value)
 		else:
-			ArkObject.__setattr__(self, attr, value)
+			object.__setattr__(self, attr, value)
 
-	def getId(self):
-		h = hashlib.sha256(self.getBytes()).hexdigest()[-8:]
-		return int("0x"+h[-1:0:-1]+h[0:1], base=16)
-
-	def getBytes(self):
-		if not hasattr(self, "_bytes"):
-			ArkObject.__setattr__(self, "_bytes", getBytes(self))
-		return getattr(self, "_bytes")
-
-	def getHash(self):
-		if not hasattr(self, "_hash"):
-			ArkObject.__setattr__(self, "_hash", hashlib.sha256(self.getBytes()).digest())
-		return getattr(self, "_hash")
-
-	def sign(self):
-		stamp = self.key_one.sign(self.getHash())
-		ArkObject.__setattr__(self, "signature", stamp)
-		if hasattr(self, "_bytes"): delattr(self, "_bytes")
-		if hasattr(self, "_hash"): delattr(self, "_hash")
+	def sign(self, secret=None):
+		if secret != None: self.secret = secret
+		stamp = self.key_one.sign(self.hash)
+		object.__setattr__(self, "signature", stamp)
 		return stamp
 
-	def secondSign(self):
-		stamp = self.key_two.sign(self.getHash())
-		ArkObject.__setattr__(self, "signSignature", stamp)
+	def secondSign(self, secondSecret=None):
+		if secondSecret != None: self.secondSecret = secondSecret
+		stamp = self.key_two.sign(self.hash)
+		object.__setattr__(self, "signSignature", stamp)
 		return stamp
 
 	def __del__(self):

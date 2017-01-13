@@ -35,4 +35,7 @@ ffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a12403220003abfad4a7644f406
 4a5d228e1e636997caab2b540b628755d4a5b0af2'
 ```
 
-* TODO: private key WIF encode 
+## curent work
+
+ * WIF address
+ * Transaction signature (first and second) 

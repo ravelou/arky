@@ -9,16 +9,6 @@ else:
 	from StringIO import StringIO
 
 
-class ArkObject(object):
-	def __getitem__(self, item):
-		if hasattr(self, item):
-			value = getattr(self, item)
-			if isinstance(value, bytes):
-				return binascii.hexlify(value)
-		else:
-			raise AttributeError()
-
-
 class ArkyDict(dict):
 	__setattr__ = lambda obj,*a,**k: dict.__setitem__(obj, *a, **k)
 	__getattr__ = lambda obj,*a,**k: dict.__getitem__(obj, *a, **k)

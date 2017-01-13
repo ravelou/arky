@@ -34,24 +34,29 @@ def getAddress(keys):
 # return WIF address from keys defined by getKeys
 def getWIF(keys):
 	compressed = keys.network.get("compressed", True)
-	seed = keys.network.wif + keys.public[:32] + (b"\x01" if compressed else b"")
-	print(len(seed))
+	seed = keys.network.wif + keys.private[:32] + (b"\x01" if compressed else b"")
+	print(len(seed), binascii.hexlify(seed))
 	return base58.b58encode_check(seed)
 
+# return a transaction as a bytes serie for the ARK network
 def getBytes(transaction):
+	# create a buffer
 	buf = StringIO()
 
+	# write type as byte in buffer
 	pack("!b", buf, (transaction.type,))
+	# write timestamp as integer in buffer (see if uint is better)
 	pack("!i", buf, (int(transaction.timestamp),))
+	# write senderPublicKey as bytes in buffer
 	pack_bytes(buf, transaction.senderPublicKey)
 
 	if hasattr(transaction, "requesterPublicKey"):
 		pack_bytes(buf, transaction.requesterPublicKey)
 
 	if hasattr(transaction, "recipientId"):
-		recipientId = base58.b58decode_check(transaction.recipientId[:-1])
+		recipientId = base58.b58decode_check(transaction.recipientId)
 	else:
-		recipientId = b"\x00"*32
+		recipientId = b"\x00"*21
 	pack_bytes(buf,recipientId)
 
 	if hasattr(transaction, "vendorField"):

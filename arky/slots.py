@@ -9,11 +9,11 @@ DELEGATES = 11
 
 def getTime(time=None):
 	delta = (datetime.datetime.now(UTC) if not time else time) - BEGIN_TIME
-	return delta.total_seconds() / 1000
+	return delta.total_seconds()
 
 def getRealTime(epoch=None):
 	epoch = getTime() if epoch == None else epoch
-	return BEGIN_TIME + datetime.timedelta(seconds=epoch*1000.)
+	return BEGIN_TIME + datetime.timedelta(seconds=epoch)
 
 def getSlotNumber(epoch=None):
 	return int((getTime() if not epoch else epoch) // INTERVAL)

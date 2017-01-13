@@ -21,8 +21,8 @@ kw.update(**{
 	"download_url": "https://github.com/Moustikitos/arky/archive/master.zip",
 	"description": "Pythonic way to work with Ark.io EcoSystem.",
 	"long_description": long_description.read(),
-	"packages": ["arky", "arky.api", "arky.bitcoin", "arky.bitcoin.core", "arky.util"],
-	"install_requires ": ["requests", "pytz"],
+	"packages": ["arky", "arky.api", "arky.util"],
+	"install_requires ": ["requests", "pytz", "python-bitcoinlib"],
 	"license": "Copyright 2015-2016, Toons, BSD licence",
 	"classifiers": [
 		'Development Status :: 2 - Pre-Alpha',

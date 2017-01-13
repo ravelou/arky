@@ -1,5 +1,8 @@
 # -*- encoding: utf8 -*-
 import sys, binascii
+# from bitcoin.core.key import CECKey, ctypes, _ssl
+# from bitcoin.core.script import IsLowDERSignature
+# from bitcoin.signature import DERSignature
 
 __PY3__ = True if sys.version_info[0] >= 3 else False
 if __PY3__:
@@ -38,4 +41,3 @@ __FEES__ = ArkyDict({
 	"multisignature": 500000000,
 	"dapp": 2500000000
 })
-

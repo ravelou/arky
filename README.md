@@ -2,7 +2,19 @@
 
 This package aims to provide python developpers a usefull interface to [ARK](https://ark.io/) platform.
 
-## `arky.api`
+## Install
+
+# Ubuntu
+
+Open a shell and type: `sudo pip install arky`
+
+# Windows
+
+Run a command as Administrator and type : `pip install arky`
+
+## `arky`
+
+# `arky.api`
 
 ```python
 >>> import arky.api as api
@@ -13,7 +25,13 @@ Signature': 0, 'secondSignature': 0, 'address': 'AR1LhtKphHSAPdef8vksHWaXYFxLPjD
 ey': None, 'multisignatures': []}, 'success': True}
 ```
 
-## `arky.core`
+More on `arky.api` ?
+
+```python
+>>> help(api)
+```
+
+# `arky.core`
 
 ```python
 >>> import arky.core as core
@@ -33,6 +51,11 @@ ffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a12403220003abfad4a7644f406
 >>> keys.sign(hashlib.sha256("message".encode()).digest()).hex()
 '304402206e955336706dd2e45216db9321f5647a807dffe8040d259f93cb9917bed95ac502201fce153afaac89220a084da
 4a5d228e1e636997caab2b540b628755d4a5b0af2'
+```
+More on `arky.core` ?
+
+```python
+>>> help(core)
 ```
 
 ## curent work

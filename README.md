@@ -4,17 +4,17 @@ This package aims to provide python developpers a usefull interface to [ARK](htt
 
 ## Install
 
-# Ubuntu
+### Ubuntu
 
 Open a shell and type: `sudo pip install arky`
 
-# Windows
+### Windows
 
 Run a command as Administrator and type : `pip install arky`
 
 ## `arky`
 
-# `arky.api`
+### `arky.api`
 
 ```python
 >>> import arky.api as api
@@ -31,7 +31,7 @@ More on `arky.api` ?
 >>> help(api)
 ```
 
-# `arky.core`
+### `arky.core`
 
 ```python
 >>> import arky.core as core

@@ -1,8 +1,6 @@
 # -*- encoding: utf8 -*-
+from collections import OrderedDict
 import sys, binascii
-# from bitcoin.core.key import CECKey, ctypes, _ssl
-# from bitcoin.core.script import IsLowDERSignature
-# from bitcoin.signature import DERSignature
 
 __PY3__ = True if sys.version_info[0] >= 3 else False
 if __PY3__:
@@ -12,10 +10,10 @@ else:
 	from StringIO import StringIO
 
 
-class ArkyDict(dict):
-	__setattr__ = lambda obj,*a,**k: dict.__setitem__(obj, *a, **k)
-	__getattr__ = lambda obj,*a,**k: dict.__getitem__(obj, *a, **k)
-	__delattr__ = lambda obj,*a,**k: dict.__delitem__(obj, *a, **k)
+class ArkyDict(OrderedDict):
+	__setattr__ = lambda obj,*a,**k: OrderedDict.__setitem__(obj, *a, **k)
+	__getattr__ = lambda obj,*a,**k: OrderedDict.__getitem__(obj, *a, **k)
+	__delattr__ = lambda obj,*a,**k: OrderedDict.__delitem__(obj, *a, **k)
 
 
 # network options:

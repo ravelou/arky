@@ -22,7 +22,7 @@ kw.update(**{
 	"description": "Pythonic way to work with Ark.io EcoSystem.",
 	"long_description": long_description.read(),
 	"packages": ["arky", "arky.api", "arky.util"],
-	"install_requires ": ["requests", "pytz", "python-bitcoinlib"],
+	"install_requires ": ["requests", "ecdsa", "pytz", "python-bitcoinlib"],
 	"license": "Copyright 2015-2016, Toons, BSD licence",
 	"classifiers": [
 		'Development Status :: 2 - Pre-Alpha',

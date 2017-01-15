@@ -3,7 +3,8 @@
 import datetime, pytz
 UTC = pytz.UTC
 
-BEGIN_TIME = datetime.datetime(2016, 4, 24, 17, 0, 0, 0, tzinfo=UTC) #datetime.timezone.utc)
+# in js month value start from 0, in python month value start from 1
+BEGIN_TIME = datetime.datetime(2016, 5, 24, 17, 0, 0, 0, tzinfo=UTC)
 INTERVAL = 10
 DELEGATES = 11
 

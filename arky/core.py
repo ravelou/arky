@@ -9,9 +9,11 @@ from ecdsa import rfc6979
 from . import StringIO, __PY3__, __FEES__, slots, base58, api, ark, testnet, ArkyDict
 import struct, hashlib, binascii, json
 
+# define core exceptions 
 class NoSecretDefinedError(Exception): pass
 class NoSenderDefinedError(Exception): pass
 class NotSignedTransactionError(Exception): pass
+
 
 # read value binary data from buffer
 unpack = lambda fmt, fileobj: struct.unpack(fmt, fileobj.read(struct.calcsize(fmt)))
@@ -36,9 +38,10 @@ Returns bytes
 	r_size = len(r); s_size = len(s)
 	der_size = 6 + r_size + s_size
 	# 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S]
-	return b"\x30" + struct.pack("<b", der_size-2) + \
-	       b"\x02" + struct.pack("<b", r_size+1) + r + \
+	return b"\x30" + struct.pack("<b", der_size-1) + \
+	       b"\x02" + struct.pack("<b", r_size+1) + b"\x00" + r + \
 	       b"\x02" + struct.pack("<b", s_size) + s
+
 
 def getKeys(secret="passphrase", seed=None, network=None):
 	"""
@@ -74,6 +77,7 @@ Returns ArkyDict
 
 	return keys
 
+
 def getSignature(data, keys):
 	return keys.signingKey.sign(data, k=rfc6979.generate_k(
 		SECP256k1.generator.order(),
@@ -81,6 +85,7 @@ def getSignature(data, keys):
 		hashlib.sha256,
 		hashlib.sha256(data).digest()
 	))
+
 
 def getAddress(keys):
 	"""
@@ -96,6 +101,7 @@ Returns str
 	seed = network.pubKeyHash + ripemd160
 	return base58.b58encode_check(seed)
 
+
 def getWIF(keys):
 	"""
 Computes WIF address from keyring.
@@ -109,6 +115,7 @@ Returns str
 	compressed = network.get("compressed", True)
 	seed = network.wif + keys.private[:32] + (b"\x01" if compressed else b"")
 	return base58.b58encode_check(seed)
+
 
 def getBytes(transaction):
 	"""

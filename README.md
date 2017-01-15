@@ -35,23 +35,25 @@ More on `arky.api` ?
 
 ```python
 >>> import arky.core as core
->>> keys = core.getKeys("your secret passphrase")
->>> keys.public
-b'\x03\xab\xfa\xd4\xa7dO@n\x8d\x9b\t\x83\x19B\'\xa0\x1e\x15\t{~\xae\x06n)\xb4"l\x89\xd6{\xd9'
+>>> keys = core.getKeys("secret")
 >>> keys.public.hex()
-'03abfad4a7644f406e8d9b0983194227a01e15097b7eae066e29b4226c89d67bd9'
+'03a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a44c4a05e79f19de933'
 >>> keys.private.hex()
-'3081d3020101042026984bc4305c6c043e6fb3a1727dd055f17231b44982db1788699a154c5c4e9ca081853081820201013
-02c06072a8648ce3d0101022100fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f300604010
-004010704210279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798022100fffffffffffffffff
-ffffffffffffffebaaedce6af48a03bbfd25e8cd0364141020101a12403220003abfad4a7644f406e8d9b0983194227a01e1
-5097b7eae066e29b4226c89d67bd9'
+'2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b'
 >>> core.getAddress(keys)
-'AebdUTUtzHhEUQmn8QU91k2VSTrDU3fn2z'
->>> keys.sign(hashlib.sha256("message".encode()).digest()).hex()
-'304402206e955336706dd2e45216db9321f5647a807dffe8040d259f93cb9917bed95ac502201fce153afaac89220a084da
-4a5d228e1e636997caab2b540b628755d4a5b0af2'
+'AJWRd23HNEhPLkK1ymMnwnDBX2a7QBZqff'
+>>> core.getWIF(keys)
+'SB3BGPGRh1SRuQd52h7f5jsHUg1G9ATEvSeA7L5Bz4qySQww4k7N'
+>>> tx = core.Transaction(amount=100000000, recipientId="AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4", secret="secret")
+>>> tx.sign()
+>>> core.getBytes(tx).hex()
+'00d7f35e0103a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a44c4a05e79f19de93317634867b592574acee187f
+01a3aed0172a7cb0c7b000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000e1f5050000000030450221006d06e5e3a3bb6f30cc398fa5ccb
+d7a4d8bf72f3bf1a9e6b1a4f823cbb1f7920e0220714f5b69708bd6113fe03186e7364839294fcd6ba2d1c39d443df026435
+b22cd'
 ```
+
 More on `arky.core` ?
 
 ```python
@@ -60,5 +62,4 @@ More on `arky.core` ?
 
 ## curent work
 
- * WIF address
  * Transaction signature (first and second) 

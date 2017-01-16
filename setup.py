@@ -1,4 +1,5 @@
 # -*- coding:utf-8 -*-
+# created by Toons on 01/05/2017
 try:
 	from setuptools import setup
 	import wheel

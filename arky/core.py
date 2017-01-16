@@ -1,5 +1,4 @@
 # -*- encoding: utf8 -*-
-# docstring according to https://www.python.org/dev/peps/pep-0257
 
 from bitcoin.core import key
 from ecdsa.keys import SigningKey, VerifyingKey
@@ -34,12 +33,12 @@ sig (bytes) -- a signature
 Returns bytes
 """
 	halfsize = len(sig)//2
-	r, s = sig[:halfsize], sig[halfsize:]
+	r, s = b"\x00" + sig[:halfsize], sig[halfsize:]
 	r_size = len(r); s_size = len(s)
 	der_size = 6 + r_size + s_size
 	# 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S]
-	return b"\x30" + struct.pack("<b", der_size-1) + \
-	       b"\x02" + struct.pack("<b", r_size+1) + b"\x00" + r + \
+	return b"\x30" + struct.pack("<b", der_size-2) + \
+	       b"\x02" + struct.pack("<b", r_size) + r + \
 	       b"\x02" + struct.pack("<b", s_size) + s
 
 
@@ -79,6 +78,15 @@ Returns ArkyDict
 
 
 def getSignature(data, keys):
+	"""
+Sign data using keyring.
+
+Arguments:
+data (bytes)    -- data to be signed
+keys (ArkyDict) -- keyring returned by `getKeys`
+
+Returns bytes
+"""
 	return keys.signingKey.sign(data, k=rfc6979.generate_k(
 		SECP256k1.generator.order(),
 		keys.secret_exposent,
@@ -92,7 +100,7 @@ def getAddress(keys):
 Computes ARK address from keyring.
 
 Argument:
-keys (bitcoin.core.key.CECKey) -- keyring returned by `getKeys`
+keys (ArkyDict) -- keyring returned by `getKeys`
 
 Returns str
 """
@@ -107,7 +115,7 @@ def getWIF(keys):
 Computes WIF address from keyring.
 
 Argument:
-keys (bitcoin.core.key.CECKey) -- keyring returned by `getKeys`
+keys (ArkyDict) -- keyring returned by `getKeys`
 
 Returns str
 """
@@ -153,6 +161,7 @@ Returns bytes
 		# put vendor field value (64 bytes limited)
 		n = min(64, len(transaction.vendorField))
 		vendorField = transaction.vendorField[:n].encode() + b"\x00"*(64-n)
+		print(len(vendorField))
 	else:
 		# put a blank
 		vendorField = b"\x00"*64
@@ -174,9 +183,11 @@ Returns bytes
 		pack("<b", buf, (transaction.asset.multisignature.lifetime,))
 		pack_bytes(buf, b"".join(transaction.asset.multisignature.keysgroup))
 
+	# if there is a signature
 	if hasattr(transaction, "signature"):
 		pack_bytes(buf, transaction.signature)
 	
+	# if there is a second signature
 	if hasattr(transaction, "signSignature"):
 		pack_bytes(buf, transaction.signSignature)
 
@@ -186,8 +197,12 @@ Returns bytes
 
 
 class Transaction(api.Transaction):
+	"""
+Transaction object is the core of the API.
+"""
 
 	def __init__(self, **kwargs):
+		# the four minimum attributes that defines a transaction
 		self.type = kwargs.pop("type", 0)
 		self.amount = kwargs.pop("amount", 0)
 		self.timestamp = slots.getTime()
@@ -200,10 +215,12 @@ class Transaction(api.Transaction):
 			keys = getKeys(value)
 			object.__setattr__(self, "key_one", keys)
 			object.__setattr__(self, "address", getAddress(keys))
+			object.__setattr__(self, "wif", getWIF(keys))
 			object.__setattr__(self, "senderPublicKey", keys.public)
 		elif attr == "secondSecret":
 			object.__setattr__(self, "key_two", getKeys(value))
 		elif attr == "type":
+			# when doing `tx.type = number` automaticaly set the associated fees
 			if value == 0:   self.fee = __FEES__.send
 			elif value == 1: self.fee = __FEES__.secondsignature
 			elif value == 2: self.fee = __FEES__.delegate

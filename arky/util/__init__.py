@@ -1,30 +1,25 @@
 # -*- encoding: utf8 -*-
 # created by Toons on 01/05/2017
-import json
+import requests, json
 
-# function getPoloniexPair(pair) {
-#   var response = UrlFetchApp.fetch("https://poloniex.com/public?command=returnTicker");
-#   var test = response.getContentText();
-#   return parseFloat(JSON.parse(test)[pair].last);
-# }
+def getPoloniexPair(pair):
+	return float(PoloniexTickers[pair]["last"])
 
-# function getKraken_XBTEUR()
-# {
-#   var response = UrlFetchApp.fetch("https://api.kraken.com/0/public/Ticker?pair=XBTEUR");
-#   var myjson = JSON.parse(response.getContentText());
-#   return parseFloat(myjson.result.XXBTZEUR.c[0]);
-# }
+def getArkPrice(curency):
+	return float(coinmarketcap["price"][curency])
 
-# function getKraken_ICNEUR()
-# {
-#   var response = UrlFetchApp.fetch("https://api.kraken.com/0/public/Ticker?pair=ICNXBT");
-#   var myjson = JSON.parse(response.getContentText());
-#   return parseFloat(myjson.result.XICNXXBT.c[0])*getKraken_XBTEUR();
-# }
+def getKrakenPair(pair):
+	data = json.loads(requests.get("https://api.kraken.com/0/public/Ticker?pair="+pair.upper()).text)
+	A, B = pair[:3], pair[3:]
+	A = ("Z" if A in ['USD', 'EUR', 'CAD', 'GPB', 'JPY'] else "X") + A
+	B = ("Z" if B in ['USD', 'EUR', 'CAD', 'GPB', 'JPY'] else "X") + B
+	try: return float(data["result"][A + B]["c"][0])
+	except: return -1
 
-# function getKraken_ETHEUR()
-# {
-#   var response = UrlFetchApp.fetch("https://api.kraken.com/0/public/Ticker?pair=ETHEUR");
-#   var myjson = JSON.parse(response.getContentText());
-#   return parseFloat(myjson.result.XETHZEUR.c[0]);
-# }
+def reload():
+	global PoloniexTickers, coinmarketcap
+	PoloniexTickers = json.loads(requests.get("https://poloniex.com/public?command=returnTicker").text)
+	try: coinmarketcap = json.loads(requests.get("http://coinmarketcap.northpole.ro/api/v5/ARK.json").text)
+	except: coinmarketcap = {"price": {"usd":1/34}}
+
+reload()

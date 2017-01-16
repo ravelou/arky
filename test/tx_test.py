@@ -5,7 +5,7 @@ import requests, json, binascii
 
 SESSION = requests.Session()
 SESSION.headers.update({
-	'Content-Type': 'application/json',
+	'Content-Type': 'application/json; charset=utf-8',
 	'os': 'arkwalletapp',
 	'version': '0.5.0',
 	'port': '1',
@@ -14,8 +14,11 @@ SESSION.headers.update({
 
 # send 1 ARK from secret to AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4
 # createTransaction("AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4", 100000000, null, "secret")
-tx = core.Transaction(amount=100000000, recipientId="AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4", secret="secret", vendorField="arky pulse")
-tx.sign()
+tx = core.Transaction(amount=100000000, recipientId="AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4")
+tx.sign("secret")
+
+print("%s send %d ARK to %s" % (tx.address, tx.amount/100000000, tx.recipientId))
 req = SESSION.post("http://node1.arknet.cloud:4000/peer/transactions", data=json.dumps({"transactions": [tx.serialize()]}))
 print("json send:", json.dumps({"transactions": [tx.serialize()]}))
 print("server resonse detail:", req.json())
+# print(req.headers)

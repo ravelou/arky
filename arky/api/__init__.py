@@ -1,16 +1,8 @@
 # -*- encoding: utf8 -*-
 # created by Toons on 01/05/2017
+
 # only GET method is implemented, no POST or PUT for security reasons
-from .. import ArkyDict
-import json, requests
-
-__URL_BASE__ = "http://node1.arknet.cloud:4000"
-
-def get(api, dic={}, **kw):
-	returnkey = kw.pop("returnKey", False)
-	data = json.loads(requests.get(__URL_BASE__+api, params=dict(dic, **kw)).text)
-	if data["success"] and returnkey: return ArkyDict(data[returnkey])
-	else: return ArkyDict(data)
+from .. import ArkyDict, get
 
 
 class Loader:

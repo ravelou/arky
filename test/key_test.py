@@ -41,24 +41,3 @@ fe89619f2faab5cb2e33822aa129be14780d3798309bae3676964fa442bd6d")
 	
 
 test_001(b"secret")
-
-# def test_002(secret):
-# 	data = binascii.unhexlify(
-# "005ee85e0103a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a44c4a05e79f19de9331763\
-# 4867b592574acee187f01a3aed0172a7cb0c7b0000000000000000000000000000000000000000000\
-# 000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-# 000000e1f50500000000")
-# 	sign = binascii.unhexlify(
-# "3045022100ebbe7b8d52b6d2e86764242878fc2750519777a5558ae27a5b044ee483b3f60c022058\
-# 0fecc8448cec87453bf9081b23f6125c931eb700ed1d167b1b85d5e106d7fd")
-	
-# 	secexp = int(sha256(secret).hexdigest(), 16)
-# 	priv = SigningKey.from_secret_exponent(secexp, SECP256k1, sha256)
-# 	pub = priv.get_verifying_key()
-
-# 	k = rfc6979.generate_k(SECP256k1.generator.order(), secexp, sha256, sha256(data).digest())
-# 	sig1 = priv.sign(data, k=k)
-# 	print(sig1.hex())
-# 	return DERSignature(sig1[:32], sig1[32:], 64)
-	
-# test_002(b"secret")

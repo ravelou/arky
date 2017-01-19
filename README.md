@@ -2,7 +2,7 @@
 
 This package aims to provide python developpers a usefull interface to [ARK](https://ark.io/) platform.
 
-## Install
+## Install (for now not available on Pypi)
 
 ### Ubuntu
 
@@ -60,6 +60,14 @@ More on `arky.core` ?
 >>> help(core)
 ```
 
-## curent work
+### `arky.util`
 
- * Transaction signature (first and second) 
+```python
+>>> import arky.util as util
+>>> util.getArkPrice("usd")
+0.029411764705882353
+>>> util.getPoloniexPair("BTCLSK")
+0.00017798
+>>> util.getKrakenPair("ETHEUR")
+9.661
+```

@@ -15,7 +15,7 @@ kw.update(**{
 	"name": "Arky",
 	"keywords": ["api", "ARK"],
 	"author": "Toons",
-	"author_email": "bruno.thoorens@free.fr",
+	"author_email": "moustikitos@gmail.com",
 	"maintainer": "Toons",
 	"maintainer_email": "moustikitos@gmail.com",
 	"url": "https://github.com/Moustikitos/arky",

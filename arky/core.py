@@ -1,7 +1,9 @@
 # -*- encoding: utf8 -*-
+# created by Toons on 01/05/2017
 
 from bitcoin.core import key
 from ecdsa.keys import SigningKey, VerifyingKey
+from ecdsa.util import sigencode_der
 from ecdsa.curves import SECP256k1
 from ecdsa import rfc6979
 
@@ -21,25 +23,6 @@ pack =  lambda fmt, fileobj, value: fileobj.write(struct.pack(fmt, *value))
 # write bytes as binary data into buffer
 pack_bytes = lambda f,v: pack("<"+"%ss"%len(v), f, (v,)) if __PY3__ else \
              lambda f,v: pack("<"+"c"*len(v), f, v)
-
-
-def toBip66(sig):
-	"""
-Convert a bytes signature into a DER one.
-
-Argument:
-sig (bytes) -- a signature
-
-Returns bytes
-"""
-	halfsize = len(sig)//2
-	r, s = b"\x00" + sig[:halfsize], sig[halfsize:]
-	r_size = len(r); s_size = len(s)
-	der_size = 6 + r_size + s_size
-	# 0x30 [total-length] 0x02 [R-length] [R] 0x02 [S-length] [S]
-	return b"\x30" + struct.pack("<b", der_size-2) + \
-	       b"\x02" + struct.pack("<b", r_size) + r + \
-	       b"\x02" + struct.pack("<b", s_size) + s
 
 
 def getKeys(secret="passphrase", seed=None, network=None):
@@ -75,24 +58,6 @@ Returns ArkyDict
 	keys.secret_exposent = secret_exposent
 
 	return keys
-
-
-def getSignature(data, keys):
-	"""
-Sign data using keyring.
-
-Arguments:
-data (bytes)    -- data to be signed
-keys (ArkyDict) -- keyring returned by `getKeys`
-
-Returns bytes
-"""
-	return keys.signingKey.sign(data, k=rfc6979.generate_k(
-		SECP256k1.generator.order(),
-		keys.secret_exposent,
-		hashlib.sha256,
-		hashlib.sha256(data).digest()
-	))
 
 
 def getAddress(keys):
@@ -161,7 +126,6 @@ Returns bytes
 		# put vendor field value (64 bytes limited)
 		n = min(64, len(transaction.vendorField))
 		vendorField = transaction.vendorField[:n].encode() + b"\x00"*(64-n)
-		print(len(vendorField))
 	else:
 		# put a blank
 		vendorField = b"\x00"*64
@@ -235,18 +199,23 @@ Transaction object is the core of the API.
 		if hasattr(self, "key_two"): delattr(self, "key_two")
 
 	def sign(self, secret=None):
-		if secret != None: self.secret = secret
-		elif not hasattr(self, "key_one"): raise NoSecretDefinedError("No secret defined for %r" % self)
-		stamp = getSignature(getBytes(self), getattr(self, "key_one"))
-		object.__setattr__(self, "signature", toBip66(stamp))
+		if secret != None:
+			self.secret = secret
+		elif not hasattr(self, "key_one"):
+			raise NoSecretDefinedError("No secret defined for %r" % self)
+		stamp = getattr(self, "key_one").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
+		object.__setattr__(self, "signature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
 
 	def seconSign(self, secondSecret=None):
-		if not hasattr(self, "signature"): raise NotSignedTransactionError("%r must be signed first" % self)
-		if secondSecret != None: self.secondSecret = secondSecret
-		elif not hasattr(self, "key_two"): raise NoSecretDefinedError("No second secret defined for %r" % self)
-		stamp = getSignature(getBytes(self), getattr(self, "key_two"))
-		object.__setattr__(self, "signSignature", toBip66(stamp))
+		if not hasattr(self, "signature"):
+			raise NotSignedTransactionError("%r must be signed first" % self)
+		if secondSecret != None:
+			self.secondSecret = secondSecret
+		elif not hasattr(self, "key_two"):
+			raise NoSecretDefinedError("No second secret defined for %r" % self)
+		stamp = getattr(self, "key_two").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
+		object.__setattr__(self, "signSignature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
 
 	def serialize(self):

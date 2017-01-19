@@ -1,4 +1,5 @@
 # -*- encoding -*-
+from arky.util import getArkPrice
 from arky.core import Transaction
 from arky import api
 import os, json, math, requests
@@ -29,8 +30,8 @@ session.headers.update({
 
 
 # to be improved using poloniex api...
-def USD2ARK(value): return (value*34.)*100000000
-def ARK2USD(value): return value/USD2ARK(1)
+def ARK2USD(value): return value * getArkPrice("usd")
+def USD2ARK(value): return value / getArkPrice("usd")
 
 if len(args) == 1 and os.path.exists(args[0]):
 	# do something
@@ -44,7 +45,7 @@ if len(args) == 1 and os.path.exists(args[0]):
 
 	# get forget crypto minus 3 times fees for transfer
 	forged = int(node["account"]["balance"]) - (3*0.1*100000000)
-	fees = math.floor(USD2ARK(__daily_fees__*7))
+	fees = math.floor(USD2ARK(__daily_fees__*7)*100000000)
 	forged -= fees
 	pythoners = math.floor(forged*0.25)
 	investments =  forged - pythoners

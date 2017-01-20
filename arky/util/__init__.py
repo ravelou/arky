@@ -8,7 +8,7 @@ def getPoloniexPair(pair):
 	return float(PoloniexTickers[pair]["last"])
 
 def getArkPrice(curency):
-	return float(cmp_ark["price"][curency])
+	return float(cmc_ark["price"][curency])
 
 def getKrakenPair(pair):
 	data = json.loads(requests.get("https://api.kraken.com/0/public/Ticker?pair="+pair.upper()).text)
@@ -19,9 +19,9 @@ def getKrakenPair(pair):
 	except: return -1
 
 def reload():
-	global PoloniexTickers, cmp_ark
+	global PoloniexTickers, cmc_ark
 	PoloniexTickers = json.loads(requests.get("https://poloniex.com/public?command=returnTicker").text)
-	try: cmp_ark = json.loads(requests.get("http://coinmarketcap.northpole.ro/api/v5/ARK.json").text)
-	except: cmp_ark = {"price": {"usd":1/34}}
+	try: cmc_ark = json.loads(requests.get("http://coinmarketcap.northpole.ro/api/v5/ARK.json").text)
+	except: cmc_ark = {"price": {"usd":1/34}}
 
 reload()

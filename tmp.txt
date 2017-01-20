@@ -1,0 +1,11 @@
+import os, re
+
+date = re.compile('.*([0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]).*')
+last_forged = os.popen("cat /home/ark/ark-node/logs/ark.log | grep Forged | tail -n 1").read().strip()
+dt = os.popen("date --rfc-3339=seconds").read().strip()
+tuple1 = date.match(dt).groups()
+tuple2 = date.match(lf).groups()
+d1 = datetime.datetime(*(int(e) for e in date.match(dt).groups()))
+d2 = datetime.datetime(*(int(e) for e in date.match(last_forged).groups()))
+td = d2-d1
+delay = abs(td.total_seconds())/60

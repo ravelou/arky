@@ -1,14 +1,12 @@
 # -*- encoding: utf8 -*-
 # created by Toons on 01/05/2017
 
-from bitcoin.core import key
-from ecdsa.keys import SigningKey, VerifyingKey
+from ecdsa.keys import SigningKey
 from ecdsa.util import sigencode_der
 from ecdsa.curves import SECP256k1
-from ecdsa import rfc6979
 
-from . import StringIO, __PY3__, __FEES__, slots, base58, api, ark, testnet, ArkyDict
-import struct, hashlib, binascii, json
+from . import StringIO, __URL_BASE__, __PY3__, __FEES__, __HEADERS__, slots, base58, api, ark, testnet, ArkyDict
+import struct, hashlib, binascii, requests, json
 
 # define core exceptions 
 class NoSecretDefinedError(Exception): pass
@@ -23,6 +21,15 @@ pack =  lambda fmt, fileobj, value: fileobj.write(struct.pack(fmt, *value))
 # write bytes as binary data into buffer
 pack_bytes = lambda f,v: pack("<"+"%ss"%len(v), f, (v,)) if __PY3__ else \
              lambda f,v: pack("<"+"c"*len(v), f, v)
+
+
+def compressEcdsaPublicKey(pubkey):
+	"""
+"""
+	first, last = pubkey[:32], pubkey[32:]
+	# check if last digit of second part is even (2%2 = 0, 3%2 = 1)
+	even = not bool(last[-1] % 2)
+	return (b"\x02" if even else b"\x03") + first
 
 
 def getKeys(secret="passphrase", seed=None, network=None):
@@ -42,20 +49,14 @@ Returns ArkyDict
 	seed = hashlib.sha256(secret.encode("utf8") if not isinstance(secret, bytes) else secret).digest() if not seed else seed
 
 	keys = ArkyDict()
+	# save wallet address
+	keys.wif = getWIF(seed, network)
 	# save network option
 	keys.network = network
-	# save private key ?
-	keys.private = seed
-	# generate public key
-	cec_key = key.CECKey()
-	cec_key.set_compressed(network.get("compressed", True))
-	cec_key.set_secretbytes(secret=seed)
-	keys.public = cec_key.get_pubkey()
-	# generate signing object
-	secret_exposent = int(binascii.hexlify(seed), 16)
-	keys.signingKey = SigningKey.from_secret_exponent(secret_exposent, SECP256k1, hashlib.sha256)
+	# generate signing and verifying object and public key
+	keys.signingKey = SigningKey.from_secret_exponent(int(binascii.hexlify(seed), 16), SECP256k1, hashlib.sha256)
 	keys.checkingKey = keys.signingKey.get_verifying_key()
-	keys.secret_exposent = secret_exposent
+	keys.public = compressEcdsaPublicKey(keys.checkingKey.to_string())
 
 	return keys
 
@@ -75,18 +76,18 @@ Returns str
 	return base58.b58encode_check(seed)
 
 
-def getWIF(keys):
+def getWIF(seed, network):
 	"""
 Computes WIF address from keyring.
 
 Argument:
-keys (ArkyDict) -- keyring returned by `getKeys`
+seed (bytes) -- a sha256 sequence bytes
 
 Returns str
 """
-	network = keys.network
+	network = network
 	compressed = network.get("compressed", True)
-	seed = network.wif + keys.private[:32] + (b"\x01" if compressed else b"")
+	seed = network.wif + seed[:32] + (b"\x01" if compressed else b"")
 	return base58.b58encode_check(seed)
 
 
@@ -165,6 +166,8 @@ class Transaction(api.Transaction):
 Transaction object is the core of the API.
 """
 
+	senderPublicKey = property(lambda obj:obj.key_one.public, None, None, "alias for public key, read-only attribute")
+
 	def __init__(self, **kwargs):
 		# the four minimum attributes that defines a transaction
 		self.type = kwargs.pop("type", 0)
@@ -179,8 +182,6 @@ Transaction object is the core of the API.
 			keys = getKeys(value)
 			object.__setattr__(self, "key_one", keys)
 			object.__setattr__(self, "address", getAddress(keys))
-			object.__setattr__(self, "wif", getWIF(keys))
-			object.__setattr__(self, "senderPublicKey", keys.public)
 		elif attr == "secondSecret":
 			object.__setattr__(self, "key_two", getKeys(value))
 		elif attr == "type":
@@ -203,6 +204,8 @@ Transaction object is the core of the API.
 			self.secret = secret
 		elif not hasattr(self, "key_one"):
 			raise NoSecretDefinedError("No secret defined for %r" % self)
+		if hasattr(self, "signature"):
+			delattr(self, "signature")
 		stamp = getattr(self, "key_one").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
 		object.__setattr__(self, "signature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
@@ -214,6 +217,8 @@ Transaction object is the core of the API.
 			self.secondSecret = secondSecret
 		elif not hasattr(self, "key_two"):
 			raise NoSecretDefinedError("No second secret defined for %r" % self)
+		if hasattr(self, "signSignature"):
+			delattr(self, "signSignature")
 		stamp = getattr(self, "key_two").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
 		object.__setattr__(self, "signSignature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
@@ -233,3 +238,12 @@ Transaction object is the core of the API.
 			elif attr in ["amount", "timestamp", "fee"]: value = int(value)
 			setattr(data, attr, value)
 		return data
+
+
+def sendTransactions(*transactions):
+	return ArkyDict(json.loads(requests.post(
+		__URL_BASE__+"/peer/transactions",
+		data=json.dumps({"transactions": [tx.serialize() for tx in transactions if isinstance(tx, Transaction)]}),
+		headers=__HEADERS__
+	).text))
+

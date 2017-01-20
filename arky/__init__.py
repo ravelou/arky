@@ -30,9 +30,6 @@ testnet.bip32 = ArkyDict(public=0x043587cf, private=0x04358394)
 testnet.pubKeyHash = b"\x6f"
 testnet.wif = b"\xef"
 
-__URL_BASE__ = "http://node1.arknet.cloud:4000"
-
-
 # ARK fees according to transactions in SATOSHI
 __FEES__ = ArkyDict({
 	"send": 10000000,
@@ -43,6 +40,19 @@ __FEES__ = ArkyDict({
 	"dapp": 2500000000
 })
 
+# testnet headers for POST method
+__HEADERS__ = {
+	'Content-Type': 'application/json; charset=utf-8',
+	'os': 'arkwalletapp',
+	'version': '0.5.0',
+	'port': '1',
+	'nethash': "8b2e548078a2b0d6a382e4d75ea9205e7afc1857d31bf15cc035e8664c5dd038"
+}
+
+# ARK API url base
+__URL_BASE__ = "http://node1.arknet.cloud:4000"
+
+# GET generic method for ARK API
 def get(api, dic={}, **kw):
 	returnkey = kw.pop("returnKey", False)
 	data = json.loads(requests.get(__URL_BASE__+api, params=dict(dic, **kw)).text)

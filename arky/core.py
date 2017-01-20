@@ -81,7 +81,8 @@ def getWIF(seed, network):
 Computes WIF address from keyring.
 
 Argument:
-seed (bytes) -- a sha256 sequence bytes
+seed (bytes)     -- a sha256 sequence bytes
+network (object) -- a python object
 
 Returns str
 """

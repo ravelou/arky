@@ -48,7 +48,7 @@ droptable %(table)
 createtable %(table)
 ''' % {
 		"table": db_table
-	})
+		})
 
 	os.system('''
 forever stopall

@@ -50,8 +50,14 @@ sset': {}, 'senderPublicKey': '03a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a4
 'fee': 10000000, 'signature': '304402201dbf20a62d3411c6d000b691edf3ed50c34baa96b94dedf70e2d512b9f917
 8250220475869560dd9740e2c324972be3cb2690e5fdd27b1cccf6dcd8fb325f52f8f25', 'type': 0, 'id': '16683123
 258705133772'}
->>> core.sendTransactions(tx)
-{'success': True, 'transactionId': '16683123258705133772'}
+```
+
+Actualy, there is an issue with signature. `sendTransaction` uses a while loop to do several attempts :
+
+```python
+>>> tx = core.Transaction(amount=1234000000, recipientId="AR1LhtKphHSAPdef8vksHWaXYFxLPjDQNU")
+>>> core.sendTransaction("secret", tx)
+{'transactionId': '3684489509227507694', 'attempt': 5, 'success': True}
 ```
 
 More on `arky.core` ?

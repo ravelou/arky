@@ -1,6 +1,6 @@
 # -*- encoding -*-
 from arky.util import getArkPrice
-from arky.core import Transaction
+from arky.core import Transaction, sendTransactions
 from arky import api
 import os, json, math, requests
 
@@ -38,16 +38,14 @@ if len(args) == 1 and os.path.exists(args[0]):
 	pythoners = math.floor(forged*0.25)
 	investments =  forged - pythoners
 
-	# # execute transfers
-	# for a,rid,vf in [(int(pythoners), __pythoners__, "arky to pythoners"),
- #                     (int(investments), __investments__, "arky investments"),
- #                     (int(fees), __fees__, "arky fees")]:
+	txs = [
+		Transaction(amount=int(pythoners), recipientId=__pythoners__, vendorField="arky to pythoners"),
+		Transaction(amount=int(investments), recipientId=__investments__, vendorField="arky investments"),
+		Transaction(amount=int(fees), recipientId=__fees__, vendorField="arky fees")
+	]
 
-	# 	print("Sending %.8f ARK to %s" % (a/100000000, rid))
-	# 	tx = Transaction(amount=a, recipientId=rid, vendorField=vf, secret=secret)
-	# 	tx.sign()
-	# 	print(session.post("http://node1.arknet.cloud:4000/peer/transactions", data=json.dumps({"transactions": [tx.serialize()]})).text)
-	# 	del tx
+	for tx in txs: tx.sign(secret)
+	sendTransactions(*txs)
 
 else:
 	# command line error

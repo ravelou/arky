@@ -12,6 +12,7 @@ import struct, hashlib, binascii, requests, json
 class NoSecretDefinedError(Exception): pass
 class NoSenderDefinedError(Exception): pass
 class NotSignedTransactionError(Exception): pass
+class StrictDerSignatureError(Exception): pass
 
 
 # read value binary data from buffer
@@ -167,11 +168,6 @@ Transaction object is the core of the API.
 
 	senderPublicKey = property(lambda obj:obj.key_one.public, None, None, "alias for public key, read-only attribute")
 
-	def _unsign(self):
-		if hasattr(self, "signature"): delattr(self, "signature")
-		if hasattr(self, "signSignature"): delattr(self, "signSignature")
-		if hasattr(self, "id"): delattr(self, "id")
-
 	def __init__(self, **kwargs):
 		# the four minimum attributes that defines a transaction
 		self.type = kwargs.pop("type", 0)
@@ -214,6 +210,11 @@ Transaction object is the core of the API.
 			"to": getattr(self, "recipientId", '"No one"')
 		}
 
+	def _unsign(self):
+		if hasattr(self, "signature"): delattr(self, "signature")
+		if hasattr(self, "signSignature"): delattr(self, "signSignature")
+		if hasattr(self, "id"): delattr(self, "id")
+
 	def sign(self, secret=None):
 		if secret != None:
 			self.secret = secret
@@ -221,6 +222,7 @@ Transaction object is the core of the API.
 			raise NoSecretDefinedError("No secret defined for %r" % self)
 		self._unsign()
 		stamp = getattr(self, "key_one").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
+		# checkStrictDER(stamp)
 		object.__setattr__(self, "signature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
 
@@ -231,8 +233,9 @@ Transaction object is the core of the API.
 			self.secondSecret = secondSecret
 		elif not hasattr(self, "key_two"):
 			raise NoSecretDefinedError("No second secret defined for %r" % self)
-		self._unsign()
+		if hasattr(self, "signSignature"): delattr(self, "signSignature")
 		stamp = getattr(self, "key_two").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
+		# checkStrictDER(stamp)
 		object.__setattr__(self, "signSignature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
 
@@ -253,10 +256,78 @@ Transaction object is the core of the API.
 		return data
 
 
-def sendTransactions(*transactions):
-	return ArkyDict(json.loads(requests.post(
-		__URL_BASE__+"/peer/transactions",
-		data=json.dumps({"transactions": [tx.serialize() for tx in transactions if isinstance(tx, Transaction)]}),
-		headers=__HEADERS__
-	).text))
+def sendTransaction(secret, transaction, n=10):
+	attempt = 1
+	while n: # yes i know, it is brutal :)
+		transaction.sign(secret)
+		result = ArkyDict(json.loads(requests.post(
+			__URL_BASE__+"/peer/transactions",
+			data=json.dumps({"transactions": [transaction.serialize()]}),
+			headers=__HEADERS__
+		).text))
+		if result["success"]: break
+		else: n -= 1
+		# 1s shift timestamp for hash change
+		transaction.timestamp += 1
+		attempt += 1
 
+	result.attempt = attempt
+	return result
+
+
+def checkStrictDER(sig):
+	"""
+https://github.com/bitcoin/bips/blob/master/bip-0066.mediawiki#der-encoding-reference
+Check strict DER signature compliance.
+
+Argument:
+sig (bytes) -- signature sequence bytes
+
+Raises StrictDerSignatureError exception or returns None
+"""
+
+	sig_len = len(sig)
+	# Extract the length of the R element.
+	r_len = sig[3]
+	# Extract the length of the S element.
+	s_len = sig[5+r_len]
+
+	# Minimum and maximum size constraints.
+	if 8 > sig_len > 72:
+		raise StrictDerSignatureError("bad signature size (<8 or >72)")
+	# A signature is of type 0x30 (compound).
+	if sig[0] != 0x30:
+		raise StrictDerSignatureError("A signature is not of type 0x30 (compound)")
+	# Make sure the length covers the entire signature.
+	if sig[1] != (sig_len - 2):
+		raise StrictDerSignatureError("length %d does not covers the entire signature (%d)" % (sig[1], sig_len))
+	# Make sure the length of the S element is still inside the signature.
+	if (5 + r_len) >= sig_len:
+		raise StrictDerSignatureError("S element is not inside the signature")
+	# Verify that the length of the signature matches the sum of the length of the elements.
+	if (r_len + s_len + 6) != sig_len:
+		raise StrictDerSignatureError("signature length does not matches sum of the elements")
+	# Check whether the R element is an integer.
+	if sig[2] != 0x02:
+		raise StrictDerSignatureError("R element is not an integer")
+	# Zero-length integers are not allowed for R.
+	if r_len == 0:
+		raise StrictDerSignatureError("Zero-length is not allowed for R element")
+	# Negative numbers are not allowed for R.
+	if sig[4] & 0x80:
+		raise StrictDerSignatureError("Negative number is not allowed for R element")
+	# Null bytes at the start of R are not allowed, unless R would otherwise be interpreted as a negative number.
+	if r_len > 1 and sig[4] == 0x00 and not sig[5] & 0x80:
+		raise StrictDerSignatureError("Null bytes at the start of R element is not allowed")
+	# Check whether the S element is an integer.
+	if sig[r_len+4] != 0x02:
+		raise StrictDerSignatureError("S element is not an integer")
+	# Zero-length integers are not allowed for S.
+	if s_len == 0:
+		raise StrictDerSignatureError("Zero-length is not allowed for S element")
+	# Negative numbers are not allowed for S.
+	if sig[r_len+6] & 0x80:
+		raise StrictDerSignatureError("Negative number is not allowed for S element")
+	# Null bytes at the start of S are not allowed, unless S would otherwise be interpreted as a negative number.
+	if s_len > 1 and sig[r_len+6] == 0x00 and not sig[r_len+7] & 0x80:
+		raise StrictDerSignatureError("Null bytes at the start of S element is not allowed")

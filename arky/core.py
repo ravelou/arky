@@ -5,7 +5,7 @@ from ecdsa.keys import SigningKey
 from ecdsa.util import sigencode_der
 from ecdsa.curves import SECP256k1
 
-from . import StringIO, __URL_BASE__, __PY3__, __FEES__, __HEADERS__, slots, base58, api, ark, testnet, ArkyDict
+from . import __PY3__, __URL_BASE__, __NETWORK__, __FEES__, __HEADERS__, StringIO, slots, base58, api, ArkyDict
 import struct, hashlib, binascii, requests, json
 
 # define core exceptions 
@@ -23,9 +23,7 @@ pack_bytes = lambda f,v: pack("<"+"%ss"%len(v), f, (v,)) if __PY3__ else \
              lambda f,v: pack("<"+"c"*len(v), f, v)
 
 
-def compressEcdsaPublicKey(pubkey):
-	"""
-"""
+def _compressEcdsaPublicKey(pubkey):
 	first, last = pubkey[:32], pubkey[32:]
 	# check if last digit of second part is even (2%2 = 0, 3%2 = 1)
 	even = not bool(last[-1] % 2)
@@ -35,7 +33,7 @@ def compressEcdsaPublicKey(pubkey):
 def getKeys(secret="passphrase", seed=None, network=None):
 	"""
 Generate `keys` containing `network`, `public` and `private` key as attribute.
-`secret` or `seed` have to be provided, if `network` is not, `ark` is
+`secret` or `seed` have to be provided, if `network` is not, `__NETWORK__` is
 automatically selected.
 
 Keyword arguments:
@@ -45,7 +43,7 @@ network (object)      -- a python object
 
 Returns ArkyDict
 """
-	network = ark if network == None else network # use ark network by default
+	network = __NETWORK__ if network == None else network # use __NETWORK__ network by default
 	seed = hashlib.sha256(secret.encode("utf8") if not isinstance(secret, bytes) else secret).digest() if not seed else seed
 
 	keys = ArkyDict()
@@ -56,7 +54,7 @@ Returns ArkyDict
 	# generate signing and verifying object and public key
 	keys.signingKey = SigningKey.from_secret_exponent(int(binascii.hexlify(seed), 16), SECP256k1, hashlib.sha256)
 	keys.checkingKey = keys.signingKey.get_verifying_key()
-	keys.public = compressEcdsaPublicKey(keys.checkingKey.to_string())
+	keys.public = _compressEcdsaPublicKey(keys.checkingKey.to_string())
 
 	return keys
 
@@ -99,7 +97,7 @@ Computes transaction object as bytes data.
 Argument:
 transaction (arky.core.Transaction) -- transaction object
 
-Returns bytes
+Returns sequence bytes
 """
 	buf = StringIO() # create a buffer
 
@@ -169,6 +167,11 @@ Transaction object is the core of the API.
 
 	senderPublicKey = property(lambda obj:obj.key_one.public, None, None, "alias for public key, read-only attribute")
 
+	def _unsign(self):
+		if hasattr(self, "signature"): delattr(self, "signature")
+		if hasattr(self, "signSignature"): delattr(self, "signSignature")
+		if hasattr(self, "id"): delattr(self, "id")
+
 	def __init__(self, **kwargs):
 		# the four minimum attributes that defines a transaction
 		self.type = kwargs.pop("type", 0)
@@ -179,6 +182,7 @@ Transaction object is the core of the API.
 			setattr(self, attr, value)
 
 	def __setattr__(self, attr, value):
+		self._unsign()
 		if attr == "secret":
 			keys = getKeys(value)
 			object.__setattr__(self, "key_one", keys)
@@ -200,13 +204,22 @@ Transaction object is the core of the API.
 		if hasattr(self, "key_one"): delattr(self, "key_one")
 		if hasattr(self, "key_two"): delattr(self, "key_two")
 
+	def __repr__(self):
+		return "<%(amount).8f ARK %(signed)s Transaction from %(from)s to %(to)s>" % {
+			"signed": "signed" if hasattr(self, "signature") else \
+			          "double-signed" if hasattr(self, "signSignature") else \
+			          "unsigned",
+			"amount": self.amount//100000000,
+			"from": getattr(self, "address", '"No one"'),
+			"to": getattr(self, "recipientId", '"No one"')
+		}
+
 	def sign(self, secret=None):
 		if secret != None:
 			self.secret = secret
 		elif not hasattr(self, "key_one"):
 			raise NoSecretDefinedError("No secret defined for %r" % self)
-		if hasattr(self, "signature"):
-			delattr(self, "signature")
+		self._unsign()
 		stamp = getattr(self, "key_one").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
 		object.__setattr__(self, "signature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))
@@ -218,8 +231,7 @@ Transaction object is the core of the API.
 			self.secondSecret = secondSecret
 		elif not hasattr(self, "key_two"):
 			raise NoSecretDefinedError("No second secret defined for %r" % self)
-		if hasattr(self, "signSignature"):
-			delattr(self, "signSignature")
+		self._unsign()
 		stamp = getattr(self, "key_two").signingKey.sign_deterministic(getBytes(self), hashlib.sha256, sigencode=sigencode_der)
 		object.__setattr__(self, "signSignature", stamp)
 		object.__setattr__(self, "id", str(struct.unpack("<Q", hashlib.sha256(getBytes(self)).digest()[:8])[0]))

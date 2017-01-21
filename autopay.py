@@ -8,7 +8,7 @@ import os, json, math, requests
 from optparse import OptionParser
 parser = OptionParser()
 parser.set_usage("usage: %prog arg1 ....argN [options]")
-parser.add_option("-v", "--verbose", action="store_false", dest="verbose", default=True, help="print status messages to stdout")
+parser.add_option("-q", "--quiet", action="store_false", dest="verbose", default=True, help="print status messages to stdout")
 (options, args) = parser.parse_args()
 
 # delegate automation work
@@ -18,18 +18,6 @@ __pythoners__ = "AZ8h8L4hUfS1Pi9fbZssNM1ePkn9p4NGxc"
 __fees__ = "AVPhYstwXWwyTb3kat8MbjRasT92YLR5sV"
 __daily_fees__ = 5./30 # daily server cost
 
-# configure sesion for POST to ARK network
-session = requests.Session()
-session.headers.update({
-	'Content-Type': 'application/json',
-	'os': 'arkwalletapp',
-	'version': '0.5.0',
-	'port': '1',
-	'nethash': "ce6b3b5b28c000fe4b810b843d20b971f316d237d5a9616dbc6f7f1118307fc6"
-})
-
-
-# to be improved using poloniex api...
 def ARK2USD(value): return value * getArkPrice("usd")
 def USD2ARK(value): return value / getArkPrice("usd")
 
@@ -50,16 +38,16 @@ if len(args) == 1 and os.path.exists(args[0]):
 	pythoners = math.floor(forged*0.25)
 	investments =  forged - pythoners
 
-	# execute transfers
-	for a,rid,vf in [(int(pythoners), __pythoners__, "arky to pythoners"),
-                     (int(investments), __investments__, "arky investments"),
-                     (int(fees), __fees__, "arky fees")]:
+	# # execute transfers
+	# for a,rid,vf in [(int(pythoners), __pythoners__, "arky to pythoners"),
+ #                     (int(investments), __investments__, "arky investments"),
+ #                     (int(fees), __fees__, "arky fees")]:
 
-		print("Sending %.8f ARK to %s" % (a/100000000, rid))
-		tx = Transaction(amount=a, recipientId=rid, vendorField=vf, secret=secret)
-		tx.sign()
-		print(session.post("http://node1.arknet.cloud:4000/peer/transactions", data=json.dumps({"transactions": [tx.serialize()]})).text)
-		del tx
+	# 	print("Sending %.8f ARK to %s" % (a/100000000, rid))
+	# 	tx = Transaction(amount=a, recipientId=rid, vendorField=vf, secret=secret)
+	# 	tx.sign()
+	# 	print(session.post("http://node1.arknet.cloud:4000/peer/transactions", data=json.dumps({"transactions": [tx.serialize()]})).text)
+	# 	del tx
 
 else:
 	# command line error

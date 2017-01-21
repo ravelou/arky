@@ -38,15 +38,12 @@ More on `arky.api` ?
 >>> keys = core.getKeys("secret")
 >>> keys.public.hex()
 '03a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a44c4a05e79f19de933'
->>> keys.private.hex()
-'2bb80d537b1da3e38bd30361aa855686bde0eacd7162fef6a25fe97bf527a25b'
->>> core.getAddress(keys)
-'AJWRd23HNEhPLkK1ymMnwnDBX2a7QBZqff'
 >>> keys.wif
 'SB3BGPGRh1SRuQd52h7f5jsHUg1G9ATEvSeA7L5Bz4qySQww4k7N'
+>>> core.getAddress(keys)
+'AJWRd23HNEhPLkK1ymMnwnDBX2a7QBZqff'
 >>> tx = core.Transaction(amount=100000000, recipientId="AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4")
 >>> tx.sign("secret")
->>> tx.serialize()
 >>> tx.serialize()
 {'recipientId': 'AQpqHHVFfEgwahYja9DpfCrKMyMeCuSav4', 'timestamp': 20832330, 'amount': 100000000, 'a
 sset': {}, 'senderPublicKey': '03a02b9d5fdd1307c2ee4652ba54d492d1fd11a7d1bb3f3a44c4a05e79f19de933', 

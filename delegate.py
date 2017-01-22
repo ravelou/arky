@@ -1,9 +1,13 @@
 # -*- encoding:utf-8 -*-
-from optparse import OptionParser
-from arky import core, api
-import os, sys, json, logging
+from arky import core, api, slots
+import os, sys, json, logging, binascii
+
+# write your ip and port here
+__IP__ = '45.63.114.19'
+__PORT__ = '4000'
 
 # screen command line
+from optparse import OptionParser
 parser = OptionParser()
 parser.set_usage("usage: %prog arg1 ....argN [options]")
 parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
@@ -11,104 +15,131 @@ parser.add_option("-t", "--testnet", action="store_true", dest="testnet", defaul
 parser.add_option("-m", "--mainnet", action="store_false", dest="testnet", default=True, help="work with mainnet delegate")
 (options, args) = parser.parse_args()
 
+json_filename1 = "config.testnet.json"
+json_filename2 = "config.main.json"
+
 # deal with network
 if options.testnet:
 	forever_start = "forever start app.js --genesis genesisBlock.testnet.json --config config.testnet.json"
-	json_filename = "config.testnet.json"
+	json_filename = json_filename1
 	db_table = "ark_testnet"
 else:
-	forever_start = "forever start app.js --genesis genesisBlock.mainnet.json --config config.mainnet.json"
-	json_filename = "config.mainnet.json"
+	forever_start = "forever start app.js --genesis genesisBlock.main.json --config config.main.json"
+	json_filename = json_filename2
 	db_table = "ark_mainnet"
+
+# deal with home directory
+if "win" in sys.platform:
+	home_path = os.path.join(os.environ["HOMEDRIVE"], os.environ["HOMEPATH"])
+	move_cmd = "move"
+elif "linux" in sys.platform:
+	home_path = os.environ["HOME"]
+	move_cmd = "mv"
 
 # first of all get delegate json data
 # it automaticaly searches json configuration file in "/home/username/ark-node" folder
 # if your install does not match this default one, you have to set ARKNODEPATH environement variable
-json_folder = os.environ.get("ARKNODEPATH", "~/ark-node")
+json_folder = os.environ.get("ARKNODEPATH", os.path.join(home_path, "ark-node"))
 json_path = os.path.join(json_folder, json_filename)
 
 if not os.path.exists(json_path):
 	sys.exit()
 
-in_ = open(json_path)
-content = in_.read()
-in_.close()
+else:
+	in_ = open(json_path)
+	content = in_.read()
+	in_.close()
 
-__DELEGATE_JSON__ = json.loads(content.decode() if isinstance(content, bytes) else content)
-__KEYRING__ = core.getKeys(__DELEGATE_JSON__["forging"]["secret"][0])
+	__JSON__ = json.loads(content.decode() if isinstance(content, bytes) else content)
+	__SECRET__ = __JSON__["forging"]["secret"][0]
+	__KEYRING__ = core.getKeys(__SECRET__)
 
-# move to ark node directory
-os.chdir(os.path.dirname(json_path))
+	# move to ark node directory
+	os.chdir(os.path.dirname(json_path))
 
-######## utility functions
+#### set of command line
+update_cmd = '''forever stopall
+%(move)s "%(json1)s" "%(home)s"
+%(move)s "%(json2)s" "%(home)s"
+git pull
+%(move)s "%(home)s/%(json1)s" .
+%(move)s "%(home)s/%(json2)s" .
+%(start)s''' % {
+	"move": move_cmd,
+	"home": home_path,
+	"json1": json_filename1,
+	"json2": json_filename2,
+	"start": forever_start,
+}
+
+drop_cmd = '''droptable %(table)s
+createtable %(table)s''' % {
+	"table": db_table
+}
+
+
+#### set of functions
 def update_node(droptable=False):
 	if droptable:
-		os.system('''
-droptable %(table)
-createtable %(table)
-''' % {
-		"table": db_table
-		})
+		for line in drop_cmd.split("\n"):
+			os.system(line.strip())
+	for line in update_cmd.split("\n"):
+		os.system(line.strip())
 
-	os.system('''
-forever stopall
-mv "%(json)" ~
-git pull
-mv "~/%(json)" ./
-%(start)
-''' % {
-		"json": json_filename,
-		"start": forever_start,
-	})
+def getPublicKey():
+	pubkey = binascii.hexlify(__KEYRING__.public)
+	if isinstance(pubkey, bytes): return pubkey.decode()
+	else: return pubkey
 
+def isActiveDelegate():
+	delegates = api.Delegate.getDelegates().get("delegates", [])
+	search = [dlgt for dlgt in delegates if dlgt['publicKey'] == getPublicKey()]
+	if not len(search): return False
+	else: return search[0]['username']
 
-# {
-# 	"ip":"213.32.41.107",
-# 	"port":4000,
-# 	"string":"213.32.41.107:4000",
-# 	"os":"linux4.4.0-42-generic",
-# 	"version":"0.2.0",
-# 	"state":2,
-# 	"height":12556,
-# 	"blockheader":{
-# 		"id":"11614775520380764520",
-# 		"height":12556,
-# 		"version":0,
-# 		"totalAmount":0,
-# 		"totalFee":0,
-# 		"reward":200000000,
-# 		"payloadHash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-# 		"timestamp":20828672,
-# 		"numberOfTransactions":0,
-# 		"payloadLength":0,
-# 		"previousBlock":"10783891843168196769",
-# 		"generatorPublicKey":"03628abd0a1a6dcd7a3b7e4d63375e2baa7f0f88e1530d36c58594f5356f77f964",
-# 		"blockSignature":"304502210082b5568b3cf9c785c717a66da5033eab935e07edbccc36bffe04576f4758bd0f022038cb00a8f6d4943194261f9dd9ec2a51a9f5d58bd40a7a64c91e379475d199a3"
-# 	}
-# }
+def checkUpdate():
+	curent_version = api.Peer.getPeerVersion().get("version", False)
+	if curent_version:
+		peers = api.Delegate.getPeersList().get("peers", [])
+		search = [peer for peer in peers if peer['ip'] == __IP__]
+		if not len(search):
+			return False
+		elif search[0]['version'] < curent_version:
+			update_node()
+			return True
 
-def checkNetworkHealth():
-	data = api.Peer.getPeersList(returnkey="peers")
-	pass
+def delegateIsForging():
+	# check if it is active delegate
+	dlgt = isActiveDelegate()
+	if dlgt:
+		# if delegate active (delegate rank < 51)
+		pubkey = getPublicKey()
+		# get last block forged by delegate (sorted by timestamp)
+		blks = sorted([blk for blk in api.Block.getBlocks().get("blocks", []) if blk['generatorPublicKey'] == pubkey], key=lambda e:e['timestamp'])
+		if len(blks):
+			# last block time
+			last_block_time = slots.getRealTime(blks[-1]['timestamp'])
+			# UTC actual time
+			utc_now = slots.datetime.datetime.now(slots.UTC)
+			# if last block time is more than 17 min ago --> 2-3 missed block
+			if abs((utc_now - last_block_time).total_seconds()/60) > 17:
+				# not forging
+				return False
+			else:
+				# forging
+				return True
+		else:
+			return False
+	else:
+		# delegate rank > 51
+		return None
 
+if "update" in args:
+	checkUpdate()
 
-def isActiveDelegate(pubkey, data):
-	return False
-
-
-
-# date = re.compile('.*([0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]).*')
-
-# last_forged = os.popen("cat /home/ark/ark-node/logs/ark.log | grep Forged | tail -n 1").read().strip()
-# server_time = os.popen("date --rfc-3339=seconds").read().strip()
-
-# tuple1 = date.match(server_time).groups()
-# tuple2 = date.match(last_forged).groups()
-# date1 = datetime.datetime(*(int(e) for e in tuple1))
-# date2 = datetime.datetime(*(int(e) for e in tuple2))
-# delta = date2 - date1
-# delay = abs(delta.total_seconds())/60
-
-# if delay > 20:
-# 	# update node and restart
-# 	pass
+if "check" in args:
+	is_forging = delegateIsForging()
+	if is_forging == False:
+		checkUpdate():
+		os.system("forever stopall")
+		os.system(forever_start)

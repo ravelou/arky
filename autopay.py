@@ -38,14 +38,11 @@ if len(args) == 1 and os.path.exists(args[0]):
 	pythoners = math.floor(forged*0.25)
 	investments =  forged - pythoners
 
-	txs = [
+	for tx in [
 		Transaction(amount=int(pythoners), recipientId=__pythoners__, vendorField="arky to pythoners"),
 		Transaction(amount=int(investments), recipientId=__investments__, vendorField="arky investments"),
 		Transaction(amount=int(fees), recipientId=__fees__, vendorField="arky fees")
-	]
-
-	for tx in txs: tx.sign(secret)
-	sendTransactions(*txs)
+	]: sendTransaction(secret, tx)
 
 else:
 	# command line error

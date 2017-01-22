@@ -99,7 +99,7 @@ class Peer:
 		return get('/api/peers')
 
 	@staticmethod
-	def getPeers(ip, port):
+	def getPeer(ip, port):
 		return get('/api/peers', ip=ip, port=port)
 
 	@staticmethod

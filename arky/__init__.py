@@ -58,7 +58,7 @@ Swich between mainnet and testnet
 			'os': 'arkwalletapp',
 			'version': '0.5.0',
 			'port': '1',
-			'nethash': "8b2e548078a2b0d6a382e4d75ea9205e7afc1857d31bf15cc035e8664c5dd038"
+			'nethash': "ed14889723f24ecc54871d058d98ce91ff2f973192075c0155ba2b7b70ad2511"
 		})
 
 	else:

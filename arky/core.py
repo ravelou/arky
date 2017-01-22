@@ -265,11 +265,13 @@ def sendTransaction(secret, transaction, n=10):
 			data=json.dumps({"transactions": [transaction.serialize()]}),
 			headers=__HEADERS__
 		).text))
-		if result["success"]: break
-		else: n -= 1
-		# 1s shift timestamp for hash change
-		transaction.timestamp += 1
-		attempt += 1
+		if result["success"]:
+			break
+		else:
+			n -= 1
+			attempt += 1
+			# 1s shift timestamp for hash change
+			transaction.timestamp -= 1
 
 	result.attempt = attempt
 	return result

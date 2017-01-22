@@ -145,13 +145,13 @@ def delegateIsForging():
 
 			delay = (utc_now - last_block_time).total_seconds()/60
 			h_diff = (block_height - peer_height)
-			print(delay, h_diff)
 
-			if delay > 17:
-				logging.info('%s last block was forged %d minutes ago, it is not forging !', options.ip, delay)
-				return False
-			elif h_diff > 25:
-				logging.info('%s height is %d block late from the network height, it is not forging !', options.ip, h_diff)	
+			problem = (delay > 17) and (h_diff > 25)
+			if problem:
+				if delay > 17:
+					logging.info('%s last block was forged %d minutes ago, it is not forging !', options.ip, delay)
+				if h_diff > 25:
+					logging.info('%s height is %d block late from the network height, it is not forging !', options.ip, h_diff)	
 				return False
 			else:
 				logging.info('%s stands at height %s and its last block was forged %d minutes ago, it is forging', options.ip, peer_height, delay)

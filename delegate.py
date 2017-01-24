@@ -6,23 +6,17 @@ import os, re, sys, json, logging, binascii
 from optparse import OptionParser
 parser = OptionParser()
 parser.set_usage("usage: %prog arg1 ....argN [options]")
-# parser.add_option("-v", "--verbose", action="store_true", dest="verbose", default=False, help="print status messages to stdout")
 parser.add_option("-t", "--testnet", action="store_true", dest="testnet", default=True, help="work with testnet delegate")
 parser.add_option("-m", "--mainnet", action="store_false", dest="testnet", default=True, help="work with mainnet delegate")
 parser.add_option("-i", "--ip", dest="ip", help="peer ip you want to check")
 (options, args) = parser.parse_args()
 
-json_filename1 = "config.testnet.json"
-json_filename2 = "config.main.json"
-
 # deal with network
 if options.testnet:
 	forever_start = "forever start app.js --genesis genesisBlock.testnet.json --config config.testnet.json"
-	json_filename = json_filename1
 	db_table = "ark_testnet"
 else:
 	forever_start = "forever start app.js --genesis genesisBlock.main.json --config config.main.json"
-	json_filename = json_filename2
 	db_table = "ark_mainnet"
 
 # deal with home directory
@@ -32,88 +26,60 @@ if "win" in sys.platform:
 elif "linux" in sys.platform:
 	home_path = os.environ["HOME"]
 	move_cmd = "mv"
+
 # first of all get delegate json data
 # it automaticaly searches json configuration file in "/home/username/ark-node" folder
 # if your install does not match this default one, you have to set ARKNODEPATH environement variable
+def getConfig(json_path):
+	in_ = open(json_path)
+	content = in_.read()
+	in_.close()
+	return json.loads(content.decode() if isinstance(content, bytes) else content)
+
 json_folder = os.environ.get("ARKNODEPATH", os.path.join(home_path, "ark-node"))
-json_path = os.path.join(json_folder, json_filename)
+try:
+	json_testnet = getConfig(os.path.join(json_folder, "config.testnet.json"))
+	json_mainnet = getConfig(os.path.join(json_folder, "config.main.json"))
+except:
+	logging.info('Can not find any peer ', slots.datetime.datetime.now(slots.UTC), args, options)
+	sys.exit()
+
+def putSecrets():
+	path_1 = os.path.join(json_folder, "config.testnet.json")
+	path_2 = os.path.join(json_folder, "config.main.json")
+	new_json_testnet = getConfig(path_1)
+	new_json_mainnet = getConfig(path_2)
+	new_json_testnet["forging"]["secret"] = json_testnet["forging"]["secret"]
+	new_json_mainnet["forging"]["secret"] = json_mainnet["forging"]["secret"]
+	in_1 = open(path_1)
+	json.dump(new_json_testnet, in_1, ident=2)
+	in_1.close()
+	in_2 = open(path_2)
+	json.dump(new_json_mainnet, in_2, ident=2)
+	in_2.close()
+
 # move to ark node directory
-os.chdir(os.path.dirname(json_path))
-
-# command lines to update node
-update_cmd = ('''forever stopall
-%(move)s "%(json1)s" "%(home)s"
-%(move)s "%(json2)s" "%(home)s"
-git pull
-%(move)s "%(home)s'''+os.sep+'''%(json1)s" .
-%(move)s "%(home)s'''+os.sep+'''%(json2)s" .
-%(start)s''') % {
-	"move": move_cmd,
-	"home": home_path,
-	"json1": json_filename1,
-	"json2": json_filename2,
-	"start": forever_start,
-}
-
-# command lines to recreate database
-drop_cmd = '''droptable %(table)s
-createtable %(table)s''' % {
-	"table": db_table
-}
+os.chdir(os.path.dirname(json_folder))
 
 # open the log file
 logging.basicConfig(filename=os.path.join(home_path, 'delegate.log'), format='%(levelname)s:%(message)s', level=logging.INFO)
-
-
 # deal if launch from command line
 if len(sys.argv) > 1: logging.info('### %s : delegate.py %s %s ###', slots.datetime.datetime.now(slots.UTC), args, options)
 # add my peer ip here for test purpose only...
 else: options.ip = '45.63.114.19'
 
-if not os.path.exists(json_path):
-	logging.info('Can not find any peer ', slots.datetime.datetime.now(slots.UTC), args, options)
-	sys.exit()
-
-# get info from peer
-in_ = open(json_path)
-content = in_.read()
-in_.close()
-config = json.loads(content.decode() if isinstance(content, bytes) else content)
-secret = config["forging"]["secret"][0]
-keyring = core.getKeys(secret)
-publicKey = binascii.hexlify(keyring.public)
+peer_version = api.Peer.getPeerVersion().get("version", "0.0.0")
+block_height = api.Block.getBlockchainHeight().get("height", False)
+publicKey = binascii.hexlify(core.getKeys((json_testnet if options.testnet else json_mainnet)["forging"]["secret"][0]).public)
 if isinstance(publicKey, bytes): publicKey = publicKey.decode()
-
-# get data from ARK api
-peers = api.Peer.getPeersList().get("peers", False)
-delegates = api.Delegate.getDelegates().get("delegates", False)
-blocks = api.Block.getBlocks().get("blocks", False)
-version = api.Peer.getPeerVersion().get("version", "0.0.0")
-height = api.Block.getBlockchainHeight().get("height", False)
-
-# get usefull info to analyse delegate
-def isActiveDelegate():
-	search = [dlgt for dlgt in delegates if dlgt['publicKey'] == publicKey]
-	if not len(search): return False
-	else: return search[0]
-
-def getPeerByIp():
-	search = [peer for peer in peers if peer["ip"] == options.ip]
-	if not len(search): return False
-	else: return search[0]
-
-def getLastForgedBlock():
-	search = [blck for blck in blocks if blck["generatorPublicKey"] == publicKey]
-	if not len(search): return False
-	else: return search[0]
 
 # retrieve info from ark.log
 class ArkLog:
 	@staticmethod
 	def getLastSyncTime():
-		search = re.compile(".* ([0-9][0-9])-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]) .*")
+		search = re.compile(".* ([0-9]{2,4})-([0-9][0-9])-([0-9][0-9]) ([0-9][0-9]):([0-9][0-9]):([0-9][0-9]) .*")
 		catch = os.popen('cat %s | grep "Finished sync" | tail -1' % os.path.join(json_folder, "logs", "ark.log")).read().strip()
-		return slots.datetime.datetime(*search.match(catch).groups(), tzinfo=slots.UTC)
+		return slots.datetime.datetime(*[int(e) for e in search.match(catch).groups()], tzinfo=slots.UTC)
 
 	@staticmethod
 	def getBlockchainHeight():
@@ -126,6 +92,23 @@ class ArkLog:
 		search = re.compile(".* height: ([0-9]*) .*")
 		catch = os.popen('cat %s | grep "Received new block id" | tail -1' % os.path.join(json_folder, "logs", "ark.log")).read().strip()
 		return search.match(catch).groups()[0]
+
+# get usefull info to analyse delegate
+def isActiveDelegate():
+	search = [dlgt for dlgt in api.Delegate.getDelegates().get("delegates", []) if dlgt['publicKey'] == publicKey]
+	if not len(search): return False
+	else: return search[0]
+
+def getPeerByIp():
+	search = [peer for peer in api.Peer.getPeersList().get("peers", []) if peer["ip"] == options.ip]
+	if not len(search): return False
+	else: return search[0]
+
+def getLastForgedBlock():
+	search = [blck for blck in api.Block.getBlocks().get("blocks", []) if blck["generatorPublicKey"] == publicKey]
+	if not len(search): return False
+	else: return search[0]
+
 
 delegate = isActiveDelegate()
 # info about delegate (False if not registered)
@@ -183,19 +166,30 @@ last_block = getLastForgedBlock()
 # 'height': 37330, 
 # 'id': '12753529974450248758'}
 
-# if on linux platform, get data from ark.log
-if "linux" in sys.platform:
-	log_peer_height = ArkLog.getPeerHeight()
-	print( log_peer_height)
-	log_height = ArkLog.getBlockchainHeight()
-	print( log_height)
-	log_last_sync = ArkLog.getLastSyncTime()
-	print( log_last_sync)
+# # if on linux platform, get data from ark.log
+# if "linux" in sys.platform:
+# 	log_peer_height = ArkLog.getPeerHeight()
+# 	log_block_height = ArkLog.getBlockchainHeight()
+# 	log_last_sync = ArkLog.getLastSyncTime()
+# else:
+# 	log_peer_height = False
+# 	log_height = False
+# 	log_last_sync = False
+
 
 def isForging():
 	if delegate:
 		logging.info('%s is an active delegate : name=%s rate=%s productivity=%s%%', options.ip, delegate["username"], delegate["rate"], delegate['productivity'])
-		if last_block:
+		if last_block or "blockheader" in peer:
+			if "linux" in sys.platform:
+				height_diff = height - peer['height']
+				sync_delay = (slots.datetime.datetime.now(tzinfo=slots.UTC) - ArkLog.getLastSyncTime()).to_seconds() / 60
+				if sync_delay > (8*51*3):
+					logging.info('%s seems not to be forging, peer synced %d minutes ago', options.ip, delay)
+					return False
+				elif height_diff > 20:
+					logging.info('%s seems not to be forging, peer height is %d blocks late', options.ip, height_diff)
+					return False
 			logging.info('%s is forging!', options.ip)
 			return True
 		else:
@@ -206,40 +200,40 @@ def isForging():
 		return False
 
 def isUpToDate():
-	test = config["version"] >= version
+	version = (json_testnet if options.testnet else json_mainnet)["version"]
+	test = version >= peer_version
 	if test:
-		logging.info('%s runs last node version %s', options.ip, config["version"])
+		logging.info('%s runs last node version %s', options.ip, version)
 	else:
-		logging.info('%s runs node version %s, %s is required', options.ip, config["version"], version)
+		logging.info('%s runs node version %s, %s is required', options.ip, version, peer_version)
 	return test
 
 def restartNode():
 	logging.info('Restarting the node %s', options.ip)
 	logging.info('EXECUTE> %s [%s]', "forever stopall", os.popen("forever stopall").read().strip())
-	logging.info('EXECUTE> %s [%s]', forever_start, os.popen(forever_start).read().strip())
+	logging.info('EXECUTE> %s [%s]', forever_start,     os.popen(forever_start).read().strip())
 
 def updateNode(droptable=False):
 	logging.info('Checking if %s is up to date', options.ip)
 	if not isUpToDate():
-		logging.info('Updading node:')
+		logging.info(    'Updading node:')
+		logging.info(    'EXECUTE> %s [%s]', "forever stopall",           os.popen("forever stopall").read().strip())
 		if droptable:
-			for line in [l.strip() for l in drop_cmd.split("\n")]:
-				logging.info('EXECUTE> %s [%s]', line, os.popen(line).read().strip())
-		for line in [l.strip() for l in update_cmd.split("\n")]:
-			logging.info('EXECUTE> %s [%s]', line, os.popen(line).read().strip())
+			logging.info('EXECUTE> %s [%s]', "droptable %s" % db_table,   os.popen("droptable %s" % db_table).read().strip())
+			logging.info('EXECUTE> %s [%s]', "createtable %s" % db_table, os.popen("createtable %s" % db_table).read().strip())
+		logging.info(    'EXECUTE> %s [%s]', "git pull",                  os.popen("git pull").read().strip())
+		putSecrets()
+		logging.info(    'EXECUTE> %s [%s]', forever_start,               os.popen(forever_start).read().strip())
+		return True # node updated
+	return False # node already up to date
 
 if "update" in args:
 	updateNode()
-	restartNode()
 
 if "check" in args:
 	logging.info('Checking if %s is forging :', options.ip)
 	if not isForging():
-		logging.info('Checking if %s is up to date', options.ip)
-		if not isUpToDate():
-			updateNode()
-			restartNode()
-		else:
+		if not updateNode():
 			restartNode()
 
 if len(sys.argv) > 1:

@@ -27,7 +27,7 @@ pack_bytes = lambda f,v: pack("<"+"%ss"%len(v), f, (v,)) if __PY3__ else \
 def _compressEcdsaPublicKey(pubkey):
 	first, last = pubkey[:32], pubkey[32:]
 	# check if last digit of second part is even (2%2 = 0, 3%2 = 1)
-	even = not bool(last[-1] % 2)
+	even = not bool(ord(last[-1]) % 2)
 	return (b"\x02" if even else b"\x03") + first
 
 
